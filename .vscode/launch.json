@@ -1,0 +1,102 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        
+        {
+            "type": "java",
+            "name": "Server N1 (Default)",
+            "request": "launch",
+            "mainClass": "com.example.GrpcServerApplication",
+            "projectName": "grpc-demo",
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "java",
+            "name": "Server N2",
+            "request": "launch",
+            "mainClass": "com.example.GrpcServerApplication",
+            "projectName": "grpc-demo",
+            "args": "--spring.profiles.active=n2",
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "java",
+            "name": "Server N3",
+            "request": "launch",
+            "mainClass": "com.example.GrpcServerApplication",
+            "projectName": "grpc-demo",
+            "args": "--spring.profiles.active=n3",
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "java",
+            "name": "Server N4",
+            "request": "launch",
+            "mainClass": "com.example.GrpcServerApplication",
+            "projectName": "grpc-demo",
+            "args": "--spring.profiles.active=n4",
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "java",
+            "name": "Server N5",
+            "request": "launch",
+            "mainClass": "com.example.GrpcServerApplication",
+            "projectName": "grpc-demo",
+            "args": "--spring.profiles.active=n5",
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "java",
+            "name": "Server N6",
+            "request": "launch",
+            "mainClass": "com.example.GrpcServerApplication",
+            "projectName": "grpc-demo",
+            "args": "--spring.profiles.active=n6",
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "java",
+            "name": "Server N7",
+            "request": "launch",
+            "mainClass": "com.example.GrpcServerApplication",
+            "projectName": "grpc-demo",
+            "args": "--spring.profiles.active=n7",
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "java",
+            "name": "Server N8",
+            "request": "launch",
+            "mainClass": "com.example.GrpcServerApplication",
+            "projectName": "grpc-demo",
+            "args": "--spring.profiles.active=n8",
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "java",
+            "name": "Server N9",
+            "request": "launch",
+            "mainClass": "com.example.GrpcServerApplication",
+            "projectName": "grpc-demo",
+            "args": "--spring.profiles.active=n9",
+            "console": "integratedTerminal"
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Start All Servers",
+            "configurations": [
+                "Server N1 (Default)",
+                "Server N2",
+                "Server N3",
+                "Server N4",
+                "Server N5",
+                "Server N6",
+                "Server N7",
+                "Server N8",
+                "Server N9"
+            ]
+        }
+    ]
+}

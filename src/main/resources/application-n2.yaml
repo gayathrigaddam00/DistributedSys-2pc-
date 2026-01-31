@@ -1,0 +1,6 @@
+paxos:
+  nodeId: n2
+
+grpc:
+  server:
+    port: 50052

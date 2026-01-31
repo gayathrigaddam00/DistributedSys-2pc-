@@ -1,0 +1,6 @@
+paxos:
+  nodeId: n9
+
+grpc:
+  server:
+    port: 50059

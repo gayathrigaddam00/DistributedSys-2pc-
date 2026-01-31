@@ -1,0 +1,6 @@
+paxos:
+  nodeId: n8
+
+grpc:
+  server:
+    port: 50058

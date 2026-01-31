@@ -1,0 +1,282 @@
+syntax = "proto3";
+
+package paxos.v1;
+
+option java_multiple_files = true;
+option java_package = "com.example.paxos.v1";
+option java_outer_classname = "PaxosProto";
+
+import "google/protobuf/empty.proto";
+
+// ---- Core model ----
+message Ballot { 
+  int64 epoch = 1; 
+  string leaderId = 2; 
+}
+
+message Seq { int64 num = 1; }
+
+message Txn {
+  string from = 1;
+  string to = 2;
+  int32 amount = 3;
+  string clientId = 4;
+  int64 clientTs = 5;
+  TxnType type = 6;
+}
+
+enum TxnType {
+  INTRA_SHARD = 0;
+  CROSS_SHARD = 1;
+  READ_ONLY = 2;
+}
+
+enum PhaseType {
+  PREPARE = 0;
+  COMMIT = 1;
+  ABORT = 2;
+  NORMAL = 3;
+}
+
+message Noop {}
+
+message Value {
+  oneof kind {
+    Txn  txn  = 1;
+    Noop noop = 2;
+  }
+}
+
+message AcceptedEntry {
+  Ballot b = 1;
+  Seq s = 2;
+  Value value = 3;
+  PhaseType phase = 4;
+}
+
+// ---- Node ↔ Node RPC (Paxos) ----
+message PrepareReq { Ballot b = 1; }
+
+message PromiseRes {
+  Ballot b = 1;
+  repeated AcceptedEntry acceptLog = 2;
+}
+
+message AcceptReq { 
+  Ballot b = 1; 
+  Seq s = 2; 
+  Value value = 3;
+  PhaseType phase = 4;
+}
+
+message AcceptedReq {
+  Ballot b = 1;
+  Seq s = 2;
+  string fromNodeId = 3;
+  PhaseType phase = 4;
+}
+
+message CommitReq { 
+  Ballot b = 1; 
+  Seq s = 2; 
+  Value value = 3;
+  PhaseType phase = 4;
+}
+
+message NewViewReq {
+  Ballot b = 1;
+  repeated AcceptReq rebroadcastBatch = 2;
+}
+
+// ---- Resharding messages ----
+message ShardMapping {
+  map<string, string> itemToCluster = 1;
+}
+
+message UpdateShardMappingRequest {
+  ShardMapping mapping = 1;
+}
+
+message UpdateShardMappingResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+
+message DataItem {
+  string key = 1;
+  int32 value = 2;
+}
+
+message TransferDataRequest {
+  string itemId = 1;
+  int32 value = 2;
+  string fromCluster = 3;
+  string toCluster = 4;
+}
+
+message TransferDataResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message DeleteDataRequest {
+  string itemId = 1;
+  string cluster = 2;
+}
+
+message DeleteDataResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message GetDataRequest {
+  string itemId = 1;
+}
+
+message GetDataResponse {
+  bool success = 1;
+  int32 value = 2;
+  string message = 3;
+}
+
+service PaxosNode {
+  rpc Prepare (PrepareReq)           returns (PromiseRes);
+  rpc Accept  (AcceptReq)            returns (google.protobuf.Empty);
+  rpc Accepted(AcceptedReq)          returns (google.protobuf.Empty);
+  rpc Commit  (CommitReq)            returns (google.protobuf.Empty);
+  rpc NewView (NewViewReq)           returns (google.protobuf.Empty);
+  rpc GetDB   (google.protobuf.Empty) returns (PrintDBResponse);
+  rpc GetStatus (PrintStatusRequest) returns (PrintStatusResponse);
+  rpc UpdateShardMapping(UpdateShardMappingRequest) returns (UpdateShardMappingResponse);
+}
+
+
+service DataMigration {
+  rpc TransferData(TransferDataRequest) returns (TransferDataResponse);
+  rpc DeleteData(DeleteDataRequest) returns (DeleteDataResponse);
+  rpc GetData(GetDataRequest) returns (GetDataResponse);
+}
+
+// ---- 2PC Messages ----
+message PrepareMsg {
+  Txn txn = 1;
+  string coordinatorId = 2;
+  int64 timestamp = 3;
+}
+
+message PreparedMsg {
+  Txn txn = 1;
+  string participantId = 2;
+  bool success = 3;
+  int64 timestamp = 4;
+  string currentLeaderId = 5;
+}
+
+message TwoPCCommitMsg {
+  Txn txn = 1;
+  string coordinatorId = 2;
+  int64 timestamp = 3;
+}
+
+message TwoPCAbortMsg {
+  Txn txn = 1;
+  string coordinatorId = 2;
+  string reason = 3;
+  int64 timestamp = 4;
+}
+
+message AckMsg {
+  Txn txn = 1;
+  string nodeId = 2;
+  bool success = 3;
+  string currentLeaderId = 4;
+}
+
+service TwoPhaseCommit {
+  rpc Prepare2PC (PrepareMsg)      returns (PreparedMsg);
+  rpc Commit2PC  (TwoPCCommitMsg)  returns (AckMsg);
+  rpc Abort2PC   (TwoPCAbortMsg)   returns (AckMsg);
+}
+
+// ---- Client ↔ Leader RPC ----
+message ClientRequest { Txn txn = 1; }
+
+message ClientReply {
+  Ballot b = 1;
+  string clientId = 2;
+  int64 clientTs = 3;
+  bool success = 4;
+  string message = 5;
+  Seq seq = 6;
+}
+
+message BalanceRequest {
+  string accountId = 1;
+}
+
+message BalanceResponse {
+  map<string, int32> balances = 1;
+  bool success = 2;
+  string message = 3;
+}
+
+service Bank {
+  rpc Submit       (ClientRequest)         returns (ClientReply);
+  rpc GetBalance   (BalanceRequest)        returns (BalanceResponse);
+  rpc PrintDB      (google.protobuf.Empty) returns (PrintAllDBResponse);
+  rpc PrintLog     (PrintLogRequest)       returns (PrintLogResponse);
+  rpc PrintStatus  (PrintStatusRequest)    returns (PrintAllStatusResponse);
+  rpc PrintView    (google.protobuf.Empty) returns (PrintViewResponse);
+  rpc Performance  (google.protobuf.Empty) returns (PerformanceResponse);
+}
+
+message PrintLogRequest   { string nodeId = 1; }
+message PrintLogResponse  { repeated string log_entries = 1; }
+message PrintDBResponse   { map<string, int32> db = 1; }
+message PrintStatusRequest{ int64 seq = 1; }
+message PrintStatusResponse { map<string, string> status = 1; }
+message PrintViewResponse { repeated NewViewReq views = 1; }
+
+message PrintAllDBResponse {
+  map<string, PrintDBResponse> all_dbs = 1;
+}
+
+message PrintAllStatusResponse {
+  map<string, PrintStatusResponse> all_statuses = 1;
+}
+
+message PerformanceResponse {
+  double throughput = 1;
+  double avgLatency = 2;
+  int64 totalTxns = 3;
+  int64 successTxns = 4;
+}
+
+// ---- Admin service ----
+message SetStatusRequest {
+  string nodeId = 1;
+  string status = 2;
+}
+
+message IsLeaderResponse { bool is_leader = 1; }
+
+
+message PauseRequest {
+  string reason = 1;
+}
+
+message ResumeRequest {
+  string reason = 1;
+}
+
+service AdminService {
+  rpc SetNodeStatus (SetStatusRequest)       returns (google.protobuf.Empty);
+  rpc IsLeader      (google.protobuf.Empty)  returns (IsLeaderResponse);
+  rpc FailLeader    (google.protobuf.Empty)  returns (google.protobuf.Empty);
+  rpc StartTimers   (google.protobuf.Empty)  returns (google.protobuf.Empty);
+  rpc StopTimers    (google.protobuf.Empty)  returns (google.protobuf.Empty);
+  rpc FlushState    (google.protobuf.Empty)  returns (google.protobuf.Empty);
+  rpc PauseNode     (PauseRequest)           returns (google.protobuf.Empty);
+  rpc ResumeNode    (ResumeRequest)          returns (google.protobuf.Empty);
+}
